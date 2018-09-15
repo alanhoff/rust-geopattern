@@ -7,3 +7,4 @@ authors = ["Alan Hoffmeister <alanhoffmeister@gmail.com>"]
 iron = "0.6.0"
 geopattern = "0.2.0"
 router = "0.6.0"
+resvg = { version = "0.3.0", features = ["cairo-backend"] }

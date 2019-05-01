@@ -12,7 +12,7 @@ use resvg::usvg;
 use resvg::SizeExt;
 use router::Router;
 
-const LUMINANCE: f64 = 70.0;
+const LUMINANCE: f64 = 80.0;
 
 #[derive(Debug)]
 enum Mode {
@@ -96,7 +96,7 @@ impl Pattern {
 
         let mut surface = render_to_image(&rtree, &opts).unwrap();
 
-        {
+        loop {
             let mut data = surface.get_data().unwrap();
             let mut total_luminance: f64 = 0.0;
             let mut pixels: usize = 0;
@@ -113,17 +113,17 @@ impl Pattern {
             let mean_luminance = total_luminance / pixels as f64;
 
             if mean_luminance < LUMINANCE {
-                let brightness = 1.0 + (1.0 - mean_luminance / LUMINANCE);
-
                 for i in (0..data.len()).step_by(4) {
                     for a in 0..3 {
                         let color = data.get_mut(i + a).unwrap();
 
-                        if *color as f64 * brightness <= 255.0 {
-                            *color = (*color as f64 * brightness) as u8;
+                        if *color as f64 * 1.1 <= 255.0 {
+                            *color = (*color as f64 * 1.1) as u8;
                         }
                     }
                 }
+            } else {
+                break;
             }
         }
 

@@ -12,6 +12,8 @@ use resvg::usvg;
 use resvg::SizeExt;
 use router::Router;
 
+const LUMINANCE: f64 = 70.0;
+
 #[derive(Debug)]
 enum Mode {
     Unknown,
@@ -86,16 +88,46 @@ impl Pattern {
         let mut opts = resvg::Options::default();
         opts.usvg.dpi = 300.0;
 
-        let rtree = usvg::Tree::from_str(&svg, &opts.usvg);
+        let rtree = usvg::Tree::from_str(&svg, &opts.usvg).unwrap();
         let screensize = rtree.svg_node().size.to_screen_size();
 
         let zoom = self.size as f32 / std::cmp::min(screensize.width, screensize.height) as f32;
         opts.fit_to = resvg::FitTo::Zoom(zoom);
 
-        render_to_image(&rtree, &opts)
-            .unwrap()
-            .write_to_png(&mut buffer)
-            .unwrap();
+        let mut surface = render_to_image(&rtree, &opts).unwrap();
+
+        {
+            let mut data = surface.get_data().unwrap();
+            let mut total_luminance: f64 = 0.0;
+            let mut pixels: usize = 0;
+
+            for i in (0..data.len()).step_by(4) {
+                let r = *data.get(i).unwrap() as f64;
+                let g = *data.get(i + 1).unwrap() as f64;
+                let b = *data.get(i + 2).unwrap() as f64;
+
+                pixels += 1;
+                total_luminance += 0.299 * r + 0.587 * g + 0.114 * b;
+            }
+
+            let mean_luminance = total_luminance / pixels as f64;
+
+            if mean_luminance < LUMINANCE {
+                let brightness = 1.0 + (1.0 - mean_luminance / LUMINANCE);
+
+                for i in (0..data.len()).step_by(4) {
+                    for a in 0..3 {
+                        let color = data.get_mut(i + a).unwrap();
+
+                        if *color as f64 * brightness <= 255.0 {
+                            *color = (*color as f64 * brightness) as u8;
+                        }
+                    }
+                }
+            }
+        }
+
+        surface.write_to_png(&mut buffer).unwrap();
 
         buffer
     }
